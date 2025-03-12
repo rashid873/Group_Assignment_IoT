@@ -193,3 +193,75 @@ html = """
 
 
 """
+
+# Scan Wi-Fi networks
+def scan_networks():
+    sta = network.WLAN(network.STA_IF)
+    sta.active(True)
+    networks = sta.scan()
+    sta.active(False)
+    
+    net_list = []
+    for net in networks:
+        ssid = net[0].decode('utf-8', 'ignore')
+        rssi = net[3]
+        auth = net[4]
+        sec_type = "Open" if auth == 0 else "WPA/WPA2" if auth in [2, 3] else "WPA3"
+        net_list.append({"ssid": ssid, "rssi": rssi, "security": sec_type})
+
+    return json.dumps(net_list)
+
+# Connect to Wi-Fi network
+def connect_to_wifi(ssid, password):
+    sta = network.WLAN(network.STA_IF)
+    sta.active(True)
+    sta.connect(ssid, password)
+    
+    timeout = 10
+    while not sta.isconnected() and timeout > 0:
+        sleep(1)
+        timeout -= 1
+
+    if sta.isconnected():
+        ip = sta.ifconfig()[0]
+        oled.fill(0)
+        oled.text('Connected to:', 0, 0)
+        oled.text(ssid, 0, 10)
+        oled.text('IP: ' + ip, 0, 20)
+        oled.show()
+        return f'Connected! IP: {ip}'
+    else:
+        oled.fill(0)
+        oled.text('Failed to connect', 0, 0)
+        oled.show()
+        return 'Connection Failed'
+
+# Web server
+def web_server():
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.bind(('0.0.0.0', 80))
+    s.listen(5)
+    print('Web server running...')
+
+    while True:
+        conn, addr = s.accept()
+        request = conn.recv(1024).decode('utf-8')
+
+        if '/scan' in request:
+            networks = scan_networks()
+            conn.send('HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n' + networks)
+
+        elif '/connect' in request:
+            data = json.loads(request.split('\r\n\r\n')[1])
+            ssid = data.get('ssid')
+            password = data.get('password')
+            status = connect_to_wifi(ssid, password)
+            conn.send('HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n' + status)
+
+        else:
+            conn.send('HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n' + html)
+
+        conn.close()
+
+web_server()
+
