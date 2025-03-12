@@ -132,3 +132,64 @@ html = """
         }
     </style>
 </head>
+<body>
+    <h1>ESP32-S3 Control Panel</h1>
+
+    <h2>Available Networks</h2>
+    <button onclick="scanNetworks()">Scan Networks</button>
+    <div id="networks"></div>
+
+    <h2>Connect to Wi-Fi</h2>
+    <form onsubmit="connectWiFi(event)">
+        <label for="ssid">Select Network:</label>
+        <select id="ssid" name="ssid" required></select>
+        <br>
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password" required>
+        <br>
+        <button type="submit">Connect</button>
+    </form>
+
+    <div id="status"></div>
+
+    <script>
+        function scanNetworks() {
+            fetch('/scan')
+                .then(response => response.json())
+                .then(data => {
+                    let table = '<table><tr><th>SSID</th><th>RSSI</th><th>Security</th></tr>';
+                    let options = '';
+                    data.forEach(net => {
+                        table += `<tr><td>${net.ssid}</td><td>${net.rssi} dBm</td><td>${net.security}</td></tr>`;
+                        options += `<option value="${net.ssid}">${net.ssid}</option>`;
+                    });
+                    table += '</table>';
+                    document.getElementById('networks').innerHTML = table;
+                    document.getElementById('ssid').innerHTML = options;
+                })
+                .catch(error => console.error('Error scanning networks:', error));
+        }
+
+        function connectWiFi(event) {
+            event.preventDefault();
+            const ssid = document.getElementById('ssid').value;
+            const password = document.getElementById('password').value;
+
+            fetch('/connect', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ssid, password})
+            })
+            .then(response => response.text())
+            .then(status => {
+                document.getElementById('status').textContent = 'Status: ' + status;
+            })
+            .catch(error => console.error('Error connecting:', error));
+        }
+    </script>
+</body>
+</html>
+
+
+
+"""
