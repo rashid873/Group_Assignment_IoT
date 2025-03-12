@@ -162,3 +162,81 @@ html = """
         }
     </style>
 </head>
+
+<body>
+    <!-- Main Heading -->
+    <h1>ESP32-S3 Sensor & LED Control</h1>
+
+    <!-- Short Description -->
+    <p class="description">
+        This web interface allows you to interact with your ESP32-S3. Monitor real-time sensor data from the DHT11, control the RGB LED’s color, and display messages on the OLED screen.
+    </p>
+
+    <div class="top">
+        <div class="container">
+            <!-- Sensor Readings -->
+            <div class="box">
+                <h2>🌡 Sensor Readings</h2>
+                <p>Temperature: <span id="temp">--</span> °C</p>
+                <p>Humidity: <span id="hum">--</span> %</p>
+            </div>
+
+            <!-- RGB LED Control -->
+            <div class="box">
+                <h2>🎨 RGB LED Control</h2>
+                <label for="red">Red</label>
+                <input type="range" id="red" min="0" max="255">
+
+                <label for="green">Green</label>
+                <input type="range" id="green" min="0" max="255">
+
+                <label for="blue">Blue</label>
+                <input type="range" id="blue" min="0" max="255">
+
+                <button onclick="updateColor()">Set Color</button>
+            </div>
+
+            <!-- OLED Display Control -->
+            <div class="box">
+                <h2>📺 OLED Display</h2>
+                <input type="text" id="message" placeholder="Enter your message">
+                <button onclick="sendMessage()">Send Message</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Fetch sensor data every 2 seconds
+        setInterval(function() {
+            fetch('/sensor')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('temp').textContent = data.temperature;
+                    document.getElementById('hum').textContent = data.humidity;
+                })
+                .catch(error => console.error('Error fetching sensor data:', error));
+        }, 2000);
+
+        // Send RGB values to ESP32
+        function updateColor() {
+            const red = document.getElementById('red').value;
+            const green = document.getElementById('green').value;
+            const blue = document.getElementById('blue').value;
+
+            fetch(`/color?red=${red}&green=${green}&blue=${blue}`)
+                .then(response => console.log('RGB values sent:', { red, green, blue }))
+                .catch(error => console.error('Error sending RGB values:', error));
+        }
+
+        // Send message to OLED
+        function sendMessage() {
+            const message = document.getElementById('message').value;
+            fetch(`/message?text=${encodeURIComponent(message)}`)
+                .then(response => console.log('Message sent:', message))
+                .catch(error => console.error('Error sending message:', error));
+        }
+    </script>
+</body>
+</html>
+
+"""
