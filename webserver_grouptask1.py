@@ -240,3 +240,48 @@ html = """
 </html>
 
 """
+# Web server
+def web_server():
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.bind(('0.0.0.0', 80))
+    s.listen(5)
+    print('Web server running...')
+
+    while True:
+        conn, addr = s.accept()
+        request = conn.recv(1024).decode('utf-8')
+
+        if '/sensor' in request:
+            try:
+                dht_sensor.measure()
+                temp = dht_sensor.temperature()
+                hum = dht_sensor.humidity()
+                response = '{{"temperature": {}, "humidity": {}}}'.format(temp, hum)
+            except:
+                response = '{"temperature": "Error", "humidity": "Error"}'
+            conn.send('HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n' + response)
+
+        elif '/color' in request:
+            try:
+                red = int(request.split('red=')[1].split('&')[0])
+                green = int(request.split('green=')[1].split('&')[0])
+                blue = int(request.split('blue=')[1].split(' ')[0])
+                np[0] = (red, green, blue)
+                np.write()
+            except:
+                pass
+            conn.send('HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nColor updated')
+
+        elif '/message' in request:
+            message = request.split('text=')[1].split(' ')[0].replace('+', ' ')
+            oled.fill(0)
+            oled.text(message, 0, 20)
+            oled.show()
+            conn.send('HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nMessage displayed')
+
+        else:
+            conn.send('HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n' + html)
+
+        conn.close()
+
+web_server()
